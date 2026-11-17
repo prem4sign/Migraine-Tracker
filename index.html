@@ -241,7 +241,7 @@
         setTheme(theme);
         try { localStorage.setItem(THEME_KEY, theme); } catch { /* Theme still works for this visit. */ }
       });
-      try { setTheme(localStorage.getItem(THEME_KEY) || 'light'); } catch { setTheme('light'); }
+      try { setTheme(localStorage.getItem(THEME_KEY) || 'dark'); } catch { setTheme('dark'); }
       render();
     })();
   </script>
