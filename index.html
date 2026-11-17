@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f6f7fb">
+  <title>Migraine Tracker</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #20243b;
+      --muted: #85899b;
+      --line: #eceef4;
+      --purple: #7158d8;
+      --purple-light: #f0edff;
+      --coral: #f18979;
+      --surface: #fff;
+      --background: #f6f7fb;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    body.dark {
+      color-scheme: dark;
+      --ink: #eef0fb; --muted: #a3a8bd; --line: #33364a;
+      --purple: #aa98ff; --purple-light: #302b4a; --coral: #f6a092;
+      --surface: #222537; --background: #171925;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: var(--background); color: var(--ink); }
+    button, input { font: inherit; }
+    button { color: inherit; }
+    .app { width: min(100% - 32px, 760px); margin: 0 auto; padding: 34px 0 48px; }
+    .topline { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; }
+    .brand { display: flex; gap: 12px; align-items: center; }
+    .brand-mark { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 14px; background: var(--purple-light); color: var(--purple); font-size: 21px; }
+    .brand h1 { font-size: 16px; margin: 0; letter-spacing: -.02em; }
+    .brand p { margin: 3px 0 0; color: var(--muted); font-size: 12px; }
+    .top-actions { display: flex; gap: 8px; align-items: center; }
+    .today-button, .theme-button { border: 1px solid var(--line); background: var(--surface); border-radius: 12px; padding: 9px 13px; font-size: 13px; font-weight: 600; cursor: pointer; }
+    .theme-button { width: 40px; height: 38px; padding: 0; font-size: 16px; }
+    .card { background: var(--surface); border: 1px solid var(--line); border-radius: 22px; box-shadow: 0 8px 30px rgba(38, 39, 67, .045); overflow: hidden; }
+    .calendar-head { padding: 25px 26px 20px; display: flex; justify-content: space-between; align-items: center; }
+    .calendar-head h2 { margin: 0; font-size: 23px; letter-spacing: -.04em; }
+    .month-controls { display: flex; align-items: center; gap: 8px; }
+    .month-controls button { width: 36px; height: 36px; display: grid; place-items: center; border: 1px solid var(--line); background: var(--surface); border-radius: 11px; cursor: pointer; font-size: 17px; }
+    .month-controls button:hover, .today-button:hover, .theme-button:hover { background: color-mix(in srgb, var(--purple-light) 65%, var(--surface)); border-color: var(--purple); }
+    .calendar { padding: 0 20px 22px; }
+    .weekdays, .days { display: grid; grid-template-columns: repeat(7, 1fr); }
+    .weekdays { border-bottom: 1px solid var(--line); padding-bottom: 10px; }
+    .weekday { text-align: center; color: #a1a4b2; text-transform: uppercase; font-size: 10px; font-weight: 700; letter-spacing: .08em; }
+    .days { padding-top: 8px; gap: 3px; }
+    .day { position: relative; border: 0; background: transparent; border-radius: 15px; min-height: 76px; padding: 10px 5px 7px; display: flex; flex-direction: column; align-items: center; gap: 5px; cursor: pointer; touch-action: manipulation; user-select: none; -webkit-user-select: none; transition: background .15s, transform .15s; }
+    .day:hover { background: color-mix(in srgb, var(--purple-light) 48%, var(--surface)); }
+    .day:active { transform: scale(.96); }
+    .day.outside { color: #c4c6d0; }
+    .day.today .day-number { background: var(--purple); color: white; }
+    .day-number { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 11px; font-size: 16px; font-weight: 650; }
+    .dose { font-size: 10px; color: var(--purple); background: var(--purple-light); border-radius: 7px; padding: 3px 6px; font-weight: 700; white-space: nowrap; }
+    .day.outside .dose { opacity: .65; }
+    .hint { padding: 0 26px 21px; color: var(--muted); font-size: 12px; display: flex; align-items: center; gap: 7px; }
+    .hint span { color: var(--purple); }
+    .summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 13px; margin-top: 16px; }
+    .stat { background: var(--surface); border: 1px solid var(--line); box-shadow: 0 5px 20px rgba(38,39,67,.025); border-radius: 17px; padding: 17px 19px; }
+    .stat-label { color: var(--muted); font-size: 12px; }
+    .stat-value { font-size: 22px; font-weight: 700; margin-top: 6px; letter-spacing: -.03em; }
+    .stat-value small { font-size: 12px; color: var(--muted); font-weight: 500; letter-spacing: 0; }
+    .overlay { position: fixed; inset: 0; z-index: 5; display: none; align-items: center; justify-content: center; padding: 20px; background: rgba(32,36,59,.28); backdrop-filter: blur(3px); }
+    .overlay.open { display: flex; }
+    .dialog { width: min(100%, 370px); background: var(--surface); border-radius: 22px; padding: 24px; box-shadow: 0 20px 70px rgba(25,24,55,.2); animation: rise .16s ease-out; }
+    @keyframes rise { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: none; } }
+    .dialog-top { display: flex; justify-content: space-between; align-items: flex-start; }
+    .dialog h3 { margin: 0; font-size: 19px; letter-spacing: -.03em; }
+    .dialog-date { color: var(--muted); font-size: 13px; margin-top: 5px; }
+    .close { border: 0; background: color-mix(in srgb, var(--line) 55%, var(--surface)); border-radius: 10px; width: 32px; height: 32px; cursor: pointer; font-size: 18px; color: var(--muted); }
+    .field-label { display: block; font-size: 12px; font-weight: 650; margin: 24px 0 8px; }
+    .input-wrap { position: relative; }
+    .input-wrap input { width: 100%; height: 52px; border: 1px solid var(--line); background: var(--background); border-radius: 13px; outline: 0; padding: 0 54px 0 15px; font-size: 19px; font-weight: 600; color: var(--ink); }
+    .input-wrap input:focus { border-color: var(--purple); box-shadow: 0 0 0 3px rgba(113,88,216,.12); }
+    .unit { position: absolute; right: 15px; top: 17px; font-size: 12px; color: var(--muted); }
+    .field-help { color: var(--muted); font-size: 11px; margin-top: 8px; }
+    .actions { display: flex; gap: 10px; margin-top: 23px; }
+    .actions button { height: 43px; border-radius: 12px; border: 0; cursor: pointer; font-size: 13px; font-weight: 650; }
+    .save { flex: 1; color: white; background: var(--purple); }
+    .save:hover { background: #6249c8; }
+    .delete { width: 74px; background: color-mix(in srgb, var(--coral) 18%, var(--surface)); color: var(--coral); }
+    .delete[hidden] { display: none; }
+    .error { color: #c44c53; font-size: 12px; min-height: 16px; margin-top: 7px; }
+    @media (max-width: 520px) {
+      .app { width: min(100% - 20px, 760px); padding-top: 20px; }
+      .topline { margin-bottom: 18px; }
+      .calendar-head { padding: 20px 17px 16px; }
+      .calendar-head h2 { font-size: 21px; }
+      .calendar { padding: 0 8px 14px; }
+      .days { gap: 1px; }
+      .day { min-height: 66px; border-radius: 11px; padding-top: 7px; gap: 3px; }
+      .day-number { width: 30px; height: 30px; font-size: 15px; }
+      .dose { font-size: 9px; padding: 2px 4px; }
+      .hint { padding: 0 17px 17px; font-size: 11px; }
+      .summary { grid-template-columns: 1fr; gap: 9px; margin-top: 11px; }
+      .stat { padding: 13px 15px; display: flex; justify-content: space-between; align-items: center; }
+      .stat-value { font-size: 19px; margin-top: 0; }
+    }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="topline">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">✳</div>
+        <div><h1>Migraine Tracker</h1><p>A gentle record, one day at a time</p></div>
+      </div>
+      <div class="top-actions">
+        <button class="theme-button" id="themeButton" type="button" aria-label="Switch to dark mode" title="Switch to dark mode">☾</button>
+        <button class="today-button" id="todayButton">Today</button>
+      </div>
+    </header>
+    <section class="card" aria-label="Monthly tablet tracker">
+      <div class="calendar-head">
+        <h2 id="monthTitle"></h2>
+        <div class="month-controls" aria-label="Change month">
+          <button id="prevMonth" aria-label="Previous month">‹</button>
+          <button id="nextMonth" aria-label="Next month">›</button>
+        </div>
+      </div>
+      <div class="calendar">
+        <div class="weekdays" aria-hidden="true">
+          <div class="weekday">Sun</div><div class="weekday">Mon</div><div class="weekday">Tue</div><div class="weekday">Wed</div><div class="weekday">Thu</div><div class="weekday">Fri</div><div class="weekday">Sat</div>
+        </div>
+        <div class="days" id="days" role="grid" aria-label="Calendar days"></div>
+      </div>
+      <div class="hint"><span>●</span> Long press a date to log tablets</div>
+    </section>
+    <section class="summary" aria-label="Tablet totals">
+      <div class="stat"><div class="stat-label">Tablets this week</div><div class="stat-value" id="weekValue">0 <small>tablets</small></div></div>
+      <div class="stat"><div class="stat-label">Tablets this month</div><div class="stat-value" id="monthValue">0 <small>tablets</small></div></div>
+      <div class="stat"><div class="stat-label">Tablets this year</div><div class="stat-value" id="yearValue">0 <small>tablets</small></div></div>
+    </section>
+  </main>
+  <div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-labelledby="dialogTitle">
+    <form class="dialog" id="doseForm">
+      <div class="dialog-top"><div><h3 id="dialogTitle">Log tablets</h3><div class="dialog-date" id="dialogDate"></div></div><button type="button" class="close" id="closeDialog" aria-label="Close">×</button></div>
+      <label class="field-label" for="doseInput">Number of tablets</label>
+      <div class="input-wrap"><input id="doseInput" type="number" inputmode="decimal" min="0" step="any" placeholder="e.g. 1 or 0.5"><span class="unit">tablets</span></div>
+      <div class="field-help">Enter a whole or decimal number. Leave blank to clear.</div>
+      <div class="error" id="errorMessage" aria-live="polite"></div>
+      <div class="actions"><button class="save" type="submit">Save entry</button><button class="delete" type="button" id="deleteEntry" hidden>Clear</button></div>
+    </form>
+  </div>
+  <script>
+    (() => {
+      const STORAGE_KEY = 'migraine-tracker.entries.v1';
+      const THEME_KEY = 'migraine-tracker.theme.v1';
+      const today = new Date();
+      let viewYear = today.getFullYear();
+      let viewMonth = today.getMonth();
+      let selectedDate = null;
+      let entries = {};
+      try { entries = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}') || {}; } catch { entries = {}; }
+      const el = id => document.getElementById(id);
+      function setTheme(theme) {
+        const isDark = theme === 'dark';
+        document.body.classList.toggle('dark', isDark);
+        el('themeButton').textContent = isDark ? '☀' : '☾';
+        el('themeButton').setAttribute('aria-label', isDark ? 'Switch to light mode' : 'Switch to dark mode');
+        el('themeButton').title = isDark ? 'Switch to light mode' : 'Switch to dark mode';
+      }
+      const dateKey = (year, month, day) => `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      const dateLabel = key => new Date(`${key}T12:00:00`).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+      const fmt = new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 });
+      function totalBetween(start, end) {
+        return Object.entries(entries).reduce((sum, [key, value]) => sum + (key >= start && key < end ? Number(value) : 0), 0);
+      }
+      function render() {
+        el('monthTitle').textContent = new Date(viewYear, viewMonth, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+        const firstWeekday = new Date(viewYear, viewMonth, 1).getDay();
+        const count = new Date(viewYear, viewMonth + 1, 0).getDate();
+        const cellCount = Math.ceil((firstWeekday + count) / 7) * 7;
+        const days = el('days'); days.replaceChildren();
+        for (let i = 0; i < cellCount; i++) {
+          const dayNum = i - firstWeekday + 1;
+          const date = new Date(viewYear, viewMonth, dayNum);
+          const key = dateKey(date.getFullYear(), date.getMonth(), date.getDate());
+          const currentMonth = date.getMonth() === viewMonth;
+          const button = document.createElement('button');
+          button.type = 'button'; button.className = 'day' + (currentMonth ? '' : ' outside');
+          button.setAttribute('role', 'gridcell');
+          button.setAttribute('aria-label', `${dateLabel(key)}${entries[key] != null ? `, ${fmt.format(entries[key])} tablets` : ''}. Long press to enter.`);
+          if (key === dateKey(today.getFullYear(), today.getMonth(), today.getDate())) button.classList.add('today');
+          const num = document.createElement('span'); num.className = 'day-number'; num.textContent = date.getDate(); button.append(num);
+          if (entries[key] != null) { const dose = document.createElement('span'); dose.className = 'dose'; dose.textContent = `${fmt.format(entries[key])} tab${entries[key] === 1 ? '' : 's'}`; button.append(dose); }
+          let timer, longPressed = false;
+          const start = event => { if (event.type === 'touchstart') event.preventDefault(); longPressed = false; timer = setTimeout(() => { longPressed = true; openDialog(key); }, 480); };
+          const cancel = () => { clearTimeout(timer); };
+          button.addEventListener('pointerdown', start);
+          button.addEventListener('pointerup', cancel);
+          button.addEventListener('pointerleave', cancel);
+          button.addEventListener('pointercancel', cancel);
+          button.addEventListener('contextmenu', event => event.preventDefault());
+          button.addEventListener('click', event => { if (longPressed) { event.preventDefault(); longPressed = false; } });
+          days.append(button);
+        }
+        const now = new Date();
+        const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
+        const weekEnd = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + 7);
+        const monthStart = dateKey(now.getFullYear(), now.getMonth(), 1);
+        const nextMonthStart = dateKey(now.getMonth() === 11 ? now.getFullYear() + 1 : now.getFullYear(), (now.getMonth() + 1) % 12, 1);
+        const yearStart = `${now.getFullYear()}-01-01`;
+        const nextYearStart = `${now.getFullYear() + 1}-01-01`;
+        el('weekValue').innerHTML = `${fmt.format(totalBetween(dateKey(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate()), dateKey(weekEnd.getFullYear(), weekEnd.getMonth(), weekEnd.getDate())))} <small>tablets</small>`;
+        el('monthValue').innerHTML = `${fmt.format(totalBetween(monthStart, nextMonthStart))} <small>tablets</small>`;
+        el('yearValue').innerHTML = `${fmt.format(totalBetween(yearStart, nextYearStart))} <small>tablets</small>`;
+      }
+      function openDialog(key) {
+        selectedDate = key;
+        el('dialogDate').textContent = dateLabel(key);
+        el('doseInput').value = entries[key] ?? '';
+        el('deleteEntry').hidden = entries[key] == null;
+        el('errorMessage').textContent = '';
+        el('overlay').classList.add('open');
+        setTimeout(() => { el('doseInput').focus(); el('doseInput').select(); }, 30);
+      }
+      function closeDialog() { el('overlay').classList.remove('open'); selectedDate = null; }
+      function persist() { localStorage.setItem(STORAGE_KEY, JSON.stringify(entries)); render(); }
+      el('doseForm').addEventListener('submit', event => {
+        event.preventDefault();
+        const raw = el('doseInput').value.trim();
+        if (raw === '') { delete entries[selectedDate]; persist(); closeDialog(); return; }
+        const value = Number(raw);
+        if (!Number.isFinite(value) || value < 0) { el('errorMessage').textContent = 'Enter a valid number of 0 or more.'; return; }
+        entries[selectedDate] = value; persist(); closeDialog();
+      });
+      el('deleteEntry').addEventListener('click', () => { delete entries[selectedDate]; persist(); closeDialog(); });
+      el('closeDialog').addEventListener('click', closeDialog);
+      el('overlay').addEventListener('click', event => { if (event.target === el('overlay')) closeDialog(); });
+      document.addEventListener('keydown', event => { if (event.key === 'Escape' && el('overlay').classList.contains('open')) closeDialog(); });
+      el('prevMonth').addEventListener('click', () => { viewMonth--; if (viewMonth < 0) { viewMonth = 11; viewYear--; } render(); });
+      el('nextMonth').addEventListener('click', () => { viewMonth++; if (viewMonth > 11) { viewMonth = 0; viewYear++; } render(); });
+      el('todayButton').addEventListener('click', () => { viewYear = today.getFullYear(); viewMonth = today.getMonth(); render(); });
+      el('themeButton').addEventListener('click', () => {
+        const theme = document.body.classList.contains('dark') ? 'light' : 'dark';
+        setTheme(theme);
+        try { localStorage.setItem(THEME_KEY, theme); } catch { /* Theme still works for this visit. */ }
+      });
+      try { setTheme(localStorage.getItem(THEME_KEY) || 'light'); } catch { setTheme('light'); }
+      render();
+    })();
+  </script>
+</body>
+</html>
